@@ -31,9 +31,11 @@ __crf="20"
 # Set Preset
 __preset="slow"
 
-# Colors
+# Green Color
 GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+
+# No Color
+NC='\033[0m'
 
 # Path
 __path="${1:-}"
