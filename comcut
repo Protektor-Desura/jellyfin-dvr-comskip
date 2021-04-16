@@ -1,0 +1,267 @@
+#!/usr/bin/env bash
+
+#LD_LIBRARY_PATH is set and will mess up ffmpeg, unset it, then re-set it when done
+ldPath=${LD_LIBRARY_PATH}
+unset LD_LIBRARY_PATH
+
+exitcode=0
+
+ffmpegPath="ffmpeg"
+comskipPath="comskip"
+
+if [[ $# -lt 1 ]]; then
+
+  exename=$(basename "$0")
+
+  echo "Remove commercial from video file using EDL file"
+  echo "     (If no EDL file is found, comskip will be used to generate one)"
+  echo ""
+  echo "Usage: $exename infile [outfile]"
+
+  exit 1
+fi
+
+comskipini=$HOME/.comskip.ini
+
+deleteedl=true
+deletemeta=true
+deletelog=true
+deletelogo=true
+deletetxt=true
+lockfile=""
+workdir=""
+
+while [[ $# -gt 0 ]]
+do
+key="$1"
+case $key in
+    --keep-edl)
+    deleteedl=false
+    shift
+    ;;
+    --keep-meta)
+    deletemeta=false
+    shift
+    ;;
+    --ffmpeg=*)
+    ffmpegPath="${key#*=}"
+    shift
+    ;;
+    --comskip=*)
+    comskipPath="${key#*=}"
+    shift
+    ;;
+    --comskip-ini=*)
+    comskipini="${key#*=}"
+    shift
+    ;;
+    --lockfile=*)
+    lockfile="${key#*=}"
+    shift
+    ;;
+    --work-dir=*)
+    workdir="${key#*=}"
+    shift
+    ;;
+    -*)
+    echo "Option $1 doesn't exist, please check the documentation"
+    exit 1
+    ;;
+    *)
+    if [ -z "$infile" ]; then
+      infile=$1
+      if [ ! -f "$infile" ]; then
+        echo "Inputfile '$infile' doesn't exist. Please check."
+        exit 1
+      fi
+    else
+      if [ -z "$outfile" ]; then
+        outfile=$1
+      else
+        echo "Error: too many parameters. Inputfile and Outputfile already defined. Please check your command."
+        exit 1
+      fi
+    fi
+    shift
+    ;;
+esac
+
+done
+
+if [ ! -z "$lockfile" ]; then
+
+  echo "lockfile: $lockfile"
+  while [[ -f "$lockfile" ]]; do
+    echo "Waiting"
+    sleep 5
+  done
+
+  touch "$lockfile"
+fi
+
+if [ ! -f "$comskipini" ]; then
+  echo "output_edl=1" > "$comskipini"
+elif ! grep -q "output_edl=1" "$comskipini"; then
+  echo "output_edl=1" >> "$comskipini"
+fi
+
+if [[ -z "$outfile" ]]; then
+  outfile="$infile"
+fi
+
+outdir=$(dirname "$outfile")
+
+outextension="${outfile##*.}"
+comskipoutput=""
+
+if [[ ! -z "$workdir" ]]; then
+  case "$workdir" in
+    */)
+      ;;
+    *)
+      comskipoutput=--output="$workdir"
+      workdir="$workdir/"
+      ;;
+  esac
+infileb=`basename "$infile"`
+edlfile="$workdir${infileb%.*}.edl"
+metafile="$workdir${infileb%.*}.ffmeta"
+logfile="$workdir${infileb%.*}.log"
+logofile="$workdir${infileb%.*}.logo.txt"
+txtfile="$workdir${infileb%.*}.txt"
+else
+edlfile="$workdir${infile%.*}.edl"
+metafile="$workdir${infile%.*}.ffmeta"
+logfile="$workdir${infile%.*}.log"
+logofile="$workdir${infile%.*}.logo.txt"
+txtfile="$workdir${infile%.*}.txt"
+fi
+
+
+if [ ! -f "$edlfile" ]; then
+  $comskipPath $comskipoutput --ini="$comskipini" "$infile"
+fi
+
+start=0
+i=0
+hascommercials=false
+
+concat=""
+
+tempfiles=()
+totalcutduration=0
+
+echo ";FFMETADATA1" > "$metafile"
+# Reads in from $edlfile, see end of loop.
+while IFS=$'\t' read -r -a line
+do
+
+  end="${line[0]}"
+  startnext="${line[1]}"
+
+  if [ `echo "$end" | awk '{printf "%i", $0 * 1000}'` -gt `echo "$start" | awk '{printf "%i", $0 * 1000}'` ]; then
+    ((i++))
+
+    hascommercials=true
+
+    echo [CHAPTER] >> "$metafile"
+    echo TIMEBASE=1/1000 >> "$metafile"
+    echo START=`echo "$start  $totalcutduration" | awk  '{printf "%i", ($1 - $2) * 1000}'` >> "$metafile"
+    echo END=`echo "$end $totalcutduration" | awk  '{printf "%i", ($1 - $2) * 1000}'` >> "$metafile"
+    echo "title=Chapter $i" >> "$metafile"
+
+    chapterfile="${infile%.*}.part-$i.ts"
+
+    if [[ ! -z "$workdir" ]]; then
+      chapterfile=`basename "$chapterfile"`
+      chapterfile="$workdir$chapterfile"
+    fi
+
+    tempfiles+=("$chapterfile")
+    concat="$concat|$chapterfile"
+
+    duration=`echo "$end" "$start" | awk  '{printf "%f", $1 - $2}'`
+    $ffmpegPath -hide_banner -loglevel error -nostdin -i "$infile" -ss "$start" -t "$duration" -c copy -y "$chapterfile"
+
+    totalcutduration=`echo "$totalcutduration" "$startnext" "$end" | awk  '{print $1 + $2 - $3}'`
+
+  fi
+
+  start=$startnext
+done < "$edlfile"
+
+if $hascommercials ; then
+
+  #dont forget to add the final part from last commercial to end of file
+  end=`$ffmpegPath -hide_banner -nostdin -i "$infile" 2>&1 | grep Duration | awk '{print $2}' | tr -d , | awk -F: '{ printf "%f", ($1*3600)+($2*60)+$3 }'`
+
+  if [ `echo "$end" | awk '{printf "%i", $0 * 1000}'` -gt `echo "$start" | awk '{printf "%i", $0 * 1000}'` ]; then
+
+    ((i++))
+
+    echo [CHAPTER] >> "$metafile"
+    echo TIMEBASE=1/1000 >> "$metafile"
+    echo START=`echo "$start  $totalcutduration" | awk  '{printf "%i", ($1 - $2) * 1000}'` >> "$metafile"
+    echo END=`echo "$end $totalcutduration" | awk  '{printf "%i", ($1 - $2) * 1000}'` >> "$metafile"
+    echo "title=Chapter $i" >> "$metafile"
+
+    chapterfile="${infile%.*}.part-$i.ts"
+
+    if [[ ! -z "$workdir" ]]; then
+      chapterfile=`basename "$chapterfile"`
+      chapterfile="$workdir$chapterfile"
+    fi
+
+    tempfiles+=("$chapterfile")
+    concat="$concat|$chapterfile"
+
+    duration=`echo "$end" "$start" | awk  '{printf "%f", $1 - $2}'`
+    $ffmpegPath -hide_banner -loglevel error -nostdin -i "$infile" -ss "$start" -t "$duration" -c copy -y "$chapterfile"
+  fi
+
+  $ffmpegPath -hide_banner -loglevel error -nostdin -i "$metafile" -i "concat:${concat:1}" -c copy -map_metadata 0 -y "$outfile"
+fi
+
+for i in "${tempfiles[@]}"
+do
+  rm "$i"
+done
+
+if [ "$deleteedl" == true ] ; then
+  if [ -f "$edlfile" ] ; then
+    rm "$edlfile";
+  fi
+fi
+
+if [ "$deletemeta" == true ] ; then
+  if [ -f "$metafile" ]; then
+    rm "$metafile";
+  fi
+fi
+
+if [ "$deletelog" == true ] ; then
+  if [ -f "$logfile" ]; then
+    rm "$logfile";
+  fi
+fi
+
+if [ "$deletelogo" == true ] ; then
+  if [ -f "$logofile" ]; then
+    rm "$logofile";
+  fi
+fi
+
+if [ "$deletetxt" == true ] ; then
+  if [ -f "$txtfile" ]; then
+    rm "$txtfile";
+  fi
+fi
+
+if [ ! -z $ldPath ] ; then
+  #re-set LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH="$ldPath"
+fi
+
+if [ ! -z "$lockfile" ]; then
+  rm "$lockfile"
+fi
