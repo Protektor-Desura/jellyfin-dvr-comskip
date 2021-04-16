@@ -13,6 +13,10 @@ set -o nounset
 # Set ffmpeg path to Jellyfin ffmpeg
 __ffmpeg="$(which ffmpeg || echo '/usr/lib/jellyfin-ffmpeg/ffmpeg')"
 
+# Set to skip commericals (mark as chapters) or cut commericals
+# __command="/usr/local/bin/comskip"
+__command="/usr/local/bin/comcut"
+
 # Set video codec for ffmpeg
 __videocodec="libvpx-vp9"
 
@@ -69,7 +73,7 @@ printf "[post-process.sh] %bExtracting subtitles...%b\n" "$GREEN" "$NC"
 $__ffmpeg -f lavfi -i movie="${__file}[out+subcc]" -map 0:1 "${__base}.srt"
 
 #comcut/comskip - currently using jellyfin ffmpeg in docker
-/usr/local/bin/comcut --ffmpeg=$__ffmpeg --comskip=/usr/local/bin/comskip --lockfile=/tmp/comchap.lock --comskip-ini=/config/comskip.ini "${__file}"
+$__command --ffmpeg=$__ffmpeg --comskip=/usr/local/bin/comskip --lockfile=/tmp/comchap.lock --comskip-ini=/config/comskip.ini "${__file}"
 
 
 # Transcode to mkv, crf parameter can be adjusted to change output quality
