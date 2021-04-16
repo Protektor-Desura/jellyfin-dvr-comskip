@@ -6,7 +6,7 @@ The script also attempts to extract closed captions as SRT subtitles.
 
 You can find where to put this script by going to the Server Dashboard in the Jellyfin web interface, then DVR under Live TV, then "Post-processing application:" field.
 
-ComChap - A script that marks commericals as chapters that can be skipped.
+ComChap - A script that marks commericals as chapters that can be skipped.<br>
 ComCut - A script that removes marked commericals.
 
 If you have updates for this script please submit a PR so everyone can benefit.
