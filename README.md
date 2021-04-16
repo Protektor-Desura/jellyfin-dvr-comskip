@@ -4,6 +4,9 @@ This is a script that is called after a video is recorded in Jellyfin Live TV. I
 
 You can find where to put this script by going to the Server Dashboard in the Jellyfin web interface, then DVR under Live TV, then "Post-processing application:" field.
 
+ComChap - A script that marks commericals as chapters that can be skipped.
+ComCut - A script that removes marked commericals.
+
 If you have updates for this script please submit a PR so everyone can benefit.
 
 You will need to have Comskip already installed from here:
