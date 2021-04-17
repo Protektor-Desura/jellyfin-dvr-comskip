@@ -2,7 +2,7 @@
 
 #
 # This is for Jellyfin docker. 
-# The comskip.ini file used is stored in /config for easy access, editing and to survive upgrades.
+# The comskip.ini file used is stored in /config/comskip for easy access, editing and to survive upgrades.
 #
 
 set -o errexit
