@@ -41,7 +41,7 @@ GREEN='\033[0;32m'
 # No Color
 NC='\033[0m'
 
-# Path
+# Set Path
 __path="${1:-}"
 
 
@@ -70,7 +70,7 @@ cd "${__dir}"
 
 # Extract closed captions to external SRT file
 printf "[post-process.sh] %bExtracting subtitles...%b\n" "$GREEN" "$NC"
-$__ffmpeg -f lavfi -i movie="${__file}[out+subcc]" -map 0:1 "${__base}.srt"
+$__ffmpeg -f lavfi -i movie="${__file}[out+subcc]" -map 0:1 "${__base}.en.srt"
 
 #comcut/comskip - currently using jellyfin ffmpeg in docker
 $__command --ffmpeg=$__ffmpeg --comskip=/usr/local/bin/comskip --lockfile=/tmp/comchap.lock --comskip-ini=/config/comskip/comskip.ini "${__file}"
