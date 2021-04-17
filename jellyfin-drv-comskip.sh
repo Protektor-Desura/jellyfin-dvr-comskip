@@ -14,8 +14,8 @@ set -o nounset
 __ffmpeg="$(which ffmpeg || echo '/usr/lib/jellyfin-ffmpeg/ffmpeg')"
 
 # Set to skip commericals (mark as chapters) or cut commericals
-# __command="/usr/local/bin/comskip"
-__command="/usr/local/bin/comcut"
+# __command="/config/comskip"
+__command="/config/comcut"
 
 # Set video codec for ffmpeg
 __videocodec="libvpx-vp9"
