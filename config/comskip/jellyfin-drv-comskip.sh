@@ -73,7 +73,7 @@ printf "[post-process.sh] %bExtracting subtitles...%b\n" "$GREEN" "$NC"
 $__ffmpeg -f lavfi -i movie="${__file}[out+subcc]" -map 0:1 "${__base}.srt"
 
 #comcut/comskip - currently using jellyfin ffmpeg in docker
-$__command --ffmpeg=$__ffmpeg --comskip=/usr/local/bin/comskip --lockfile=/tmp/comchap.lock --comskip-ini=/config/comskip.ini "${__file}"
+$__command --ffmpeg=$__ffmpeg --comskip=/usr/local/bin/comskip --lockfile=/tmp/comchap.lock --comskip-ini=/config/comskip/comskip.ini "${__file}"
 
 
 # Transcode to mkv, crf parameter can be adjusted to change output quality
