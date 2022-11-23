@@ -78,7 +78,7 @@ $__command --ffmpeg=$__ffmpeg --comskip=/usr/local/bin/comskip --lockfile=/tmp/c
 
 # Transcode to mkv, crf parameter can be adjusted to change output quality
 printf "[post-process.sh] %bTranscoding file..%b\n" "$GREEN" "$NC"
-$__ffmpeg -i "${__file}" -acodec "${__audiocodec}" -b:a "${__bitrate}" -vcodec "${__videocodec}" -vf yadif=parity=auto -crf "${__crf}" -preset "$__preset}" "${__base}.${__container}"
+$__ffmpeg -i "${__file}" -acodec "${__audiocodec}" -b:a "${__bitrate}" -vcodec "${__videocodec}" -vf yadif=parity=auto -crf "${__crf}" -preset "{$__preset}" "${__base}.${__container}"
 
 # Remove the original recording file
 printf "[post-process.sh] %bRemoving originial file...%b\n" "$GREEN" "$NC"
